@@ -6,10 +6,11 @@ A cross-platform WebView control for Avalonia UI that provides native web render
 
 - ✅ **Cross-Platform Support**: Works on Windows, macOS, and Linux
 - ✅ **Native Rendering Engines**:
-  - Windows: WebView2 (Microsoft Edge Chromium)
+  - Windows: WebView2 (Microsoft Edge Chromium) via direct COM interop
   - macOS: WKWebView (WebKit)
   - Linux: WebKitGTK
 - ✅ **Unified API**: Single API across all platforms
+- ✅ **Pure .NET 8 Implementation**: No WinForms or platform-specific SDK dependencies
 - ✅ **Full Navigation Control**: Back, forward, reload, and stop
 - ✅ **JavaScript Execution**: Execute JavaScript code and get results
 - ✅ **HTML String Support**: Load HTML content directly
@@ -207,12 +208,17 @@ WebView (Main Control)
     ↓
 IWebViewPlatform (Interface)
     ↓
-├── WindowsWebView (Windows/WebView2)
+├── WindowsWebView (Windows/WebView2 COM interop)
 ├── MacOSWebView (macOS/WKWebView)
 └── LinuxWebView (Linux/WebKitGTK)
 ```
 
-Each platform implementation handles native interop through P/Invoke, abstracting platform differences behind a unified interface.
+Each platform implementation handles native interop through P/Invoke:
+- **Windows**: Direct COM interop with WebView2 via WebView2Native.cs (no WinForms dependency)
+- **macOS**: Objective-C runtime calls via WKWebViewNative.cs
+- **Linux**: GTK3 and WebKitGTK calls via WebKitGtkNative.cs
+
+This approach ensures zero overhead from unused platforms and builds cleanly on .NET 8 SDK without requiring platform-specific SDKs.
 
 ## Known Limitations
 
