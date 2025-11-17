@@ -5,14 +5,19 @@ using System.Runtime.InteropServices;
 namespace GreenSwampWebView.Platforms.Windows;
 
 /// <summary>
-/// Windows implementation of WebView using WebView2.
+/// Windows implementation of WebView using WebView2 COM interfaces.
 /// </summary>
 public class WindowsWebView : IWebViewPlatform
 {
 #if WINDOWS
-    private Microsoft.Web.WebView2.WinForms.WebView2? _webView2;
+    private WebView2Native.ICoreWebView2Controller? _controller;
+    private WebView2Native.ICoreWebView2? _coreWebView;
     private IntPtr _parentHandle;
+    private IntPtr _childWindow;
     private bool _isInitialized;
+    private TaskCompletionSource<bool>? _initializationTcs;
+    private long _navigationStartingToken;
+    private long _navigationCompletedToken;
 #endif
 
     /// <inheritdoc/>
@@ -21,7 +26,14 @@ public class WindowsWebView : IWebViewPlatform
         get
         {
 #if WINDOWS
-            return _webView2?.CanGoBack ?? false;
+            try
+            {
+                return _coreWebView?.CanGoBack == 1;
+            }
+            catch
+            {
+                return false;
+            }
 #else
             return false;
 #endif
@@ -34,7 +46,14 @@ public class WindowsWebView : IWebViewPlatform
         get
         {
 #if WINDOWS
-            return _webView2?.CanGoForward ?? false;
+            try
+            {
+                return _coreWebView?.CanGoForward == 1;
+            }
+            catch
+            {
+                return false;
+            }
 #else
             return false;
 #endif
@@ -55,29 +74,39 @@ public class WindowsWebView : IWebViewPlatform
     {
 #if WINDOWS
         _parentHandle = parentHandle;
+        _initializationTcs = new TaskCompletionSource<bool>();
 
         try
         {
-            _webView2 = new Microsoft.Web.WebView2.WinForms.WebView2();
-            
-            // Set parent
-            SetParent(_webView2.Handle, parentHandle);
+            // Create a child window for WebView2
+            _childWindow = WebView2Native.CreateWindowEx(
+                0,
+                "Static",
+                "",
+                WebView2Native.WS_CHILD | WebView2Native.WS_VISIBLE | WebView2Native.WS_CLIPCHILDREN | WebView2Native.WS_CLIPSIBLINGS,
+                0, 0, 100, 100,
+                parentHandle,
+                IntPtr.Zero,
+                IntPtr.Zero,
+                IntPtr.Zero);
 
-            // Initialize WebView2 environment and control
-            await _webView2.EnsureCoreWebView2Async(null);
-
-            // Subscribe to events
-            if (_webView2.CoreWebView2 != null)
+            if (_childWindow == IntPtr.Zero)
             {
-                _webView2.CoreWebView2.NavigationStarting += CoreWebView2_NavigationStarting;
-                _webView2.CoreWebView2.NavigationCompleted += CoreWebView2_NavigationCompleted;
+                throw new InvalidOperationException("Failed to create child window for WebView2");
             }
 
+            // Create WebView2 environment and controller
+            var environmentHandler = new CreateEnvironmentHandler(this);
+            WebView2Native.CreateCoreWebView2EnvironmentWithOptions(null, null, IntPtr.Zero, environmentHandler);
+
+            // Wait for initialization to complete
+            await _initializationTcs.Task;
             _isInitialized = true;
         }
         catch (Exception ex)
         {
             System.Diagnostics.Debug.WriteLine($"WebView2 initialization failed: {ex.Message}");
+            _initializationTcs?.TrySetException(ex);
             throw;
         }
 #else
@@ -89,9 +118,16 @@ public class WindowsWebView : IWebViewPlatform
     public void Navigate(string url)
     {
 #if WINDOWS
-        if (_isInitialized && _webView2?.CoreWebView2 != null)
+        if (_isInitialized && _coreWebView != null)
         {
-            _webView2.CoreWebView2.Navigate(url);
+            try
+            {
+                _coreWebView.Navigate(url);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Navigation failed: {ex.Message}");
+            }
         }
 #endif
     }
@@ -100,9 +136,16 @@ public class WindowsWebView : IWebViewPlatform
     public void NavigateToString(string html)
     {
 #if WINDOWS
-        if (_isInitialized && _webView2?.CoreWebView2 != null)
+        if (_isInitialized && _coreWebView != null)
         {
-            _webView2.CoreWebView2.NavigateToString(html);
+            try
+            {
+                _coreWebView.NavigateToString(html);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"NavigateToString failed: {ex.Message}");
+            }
         }
 #endif
     }
@@ -111,9 +154,16 @@ public class WindowsWebView : IWebViewPlatform
     public void GoBack()
     {
 #if WINDOWS
-        if (_isInitialized && _webView2?.CoreWebView2 != null && CanGoBack)
+        if (_isInitialized && _coreWebView != null && CanGoBack)
         {
-            _webView2.CoreWebView2.GoBack();
+            try
+            {
+                _coreWebView.GoBack();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GoBack failed: {ex.Message}");
+            }
         }
 #endif
     }
@@ -122,9 +172,16 @@ public class WindowsWebView : IWebViewPlatform
     public void GoForward()
     {
 #if WINDOWS
-        if (_isInitialized && _webView2?.CoreWebView2 != null && CanGoForward)
+        if (_isInitialized && _coreWebView != null && CanGoForward)
         {
-            _webView2.CoreWebView2.GoForward();
+            try
+            {
+                _coreWebView.GoForward();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"GoForward failed: {ex.Message}");
+            }
         }
 #endif
     }
@@ -133,9 +190,16 @@ public class WindowsWebView : IWebViewPlatform
     public void Reload()
     {
 #if WINDOWS
-        if (_isInitialized && _webView2?.CoreWebView2 != null)
+        if (_isInitialized && _coreWebView != null)
         {
-            _webView2.CoreWebView2.Reload();
+            try
+            {
+                _coreWebView.Reload();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Reload failed: {ex.Message}");
+            }
         }
 #endif
     }
@@ -144,9 +208,16 @@ public class WindowsWebView : IWebViewPlatform
     public void Stop()
     {
 #if WINDOWS
-        if (_isInitialized && _webView2?.CoreWebView2 != null)
+        if (_isInitialized && _coreWebView != null)
         {
-            _webView2.CoreWebView2.Stop();
+            try
+            {
+                _coreWebView.Stop();
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"Stop failed: {ex.Message}");
+            }
         }
 #endif
     }
@@ -155,11 +226,14 @@ public class WindowsWebView : IWebViewPlatform
     public async Task<string> ExecuteScriptAsync(string script)
     {
 #if WINDOWS
-        if (_isInitialized && _webView2?.CoreWebView2 != null)
+        if (_isInitialized && _coreWebView != null)
         {
             try
             {
-                return await _webView2.CoreWebView2.ExecuteScriptAsync(script);
+                var tcs = new TaskCompletionSource<string>();
+                var handler = new ExecuteScriptHandler(tcs);
+                _coreWebView.ExecuteScript(script, handler);
+                return await tcs.Task;
             }
             catch (Exception ex)
             {
@@ -175,9 +249,28 @@ public class WindowsWebView : IWebViewPlatform
     public void UpdateBounds(int x, int y, int width, int height)
     {
 #if WINDOWS
-        if (_webView2 != null)
+        if (_childWindow != IntPtr.Zero)
         {
-            SetWindowPos(_webView2.Handle, IntPtr.Zero, x, y, width, height, 0x0004); // SWP_NOZORDER
+            WebView2Native.SetWindowPos(_childWindow, IntPtr.Zero, x, y, width, height, WebView2Native.SWP_NOZORDER);
+        }
+
+        if (_controller != null)
+        {
+            try
+            {
+                var bounds = new WebView2Native.tagRECT
+                {
+                    left = 0,
+                    top = 0,
+                    right = width,
+                    bottom = height
+                };
+                _controller.put_Bounds(bounds);
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"UpdateBounds failed: {ex.Message}");
+            }
         }
 #endif
     }
@@ -186,59 +279,220 @@ public class WindowsWebView : IWebViewPlatform
     public void SetVisible(bool visible)
     {
 #if WINDOWS
-        if (_webView2 != null)
+        if (_childWindow != IntPtr.Zero)
         {
-            ShowWindow(_webView2.Handle, visible ? 5 : 0); // SW_SHOW : SW_HIDE
+            WebView2Native.ShowWindow(_childWindow, visible ? WebView2Native.SW_SHOW : WebView2Native.SW_HIDE);
+        }
+
+        if (_controller != null)
+        {
+            try
+            {
+                _controller.IsVisible = visible ? 1 : 0;
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"SetVisible failed: {ex.Message}");
+            }
         }
 #endif
     }
 
 #if WINDOWS
-    private void CoreWebView2_NavigationStarting(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationStartingEventArgs e)
+    // COM event handler implementations
+    [ComVisible(true)]
+    private class CreateEnvironmentHandler : WebView2Native.ICreateCoreWebView2EnvironmentCompletedHandler
     {
-        NavigationStarting?.Invoke(this, new WebViewNavigationEventArgs(e.Uri, true));
+        private readonly WindowsWebView _parent;
+
+        public CreateEnvironmentHandler(WindowsWebView parent)
+        {
+            _parent = parent;
+        }
+
+        public void Invoke(int errorCode, WebView2Native.ICoreWebView2Environment? createdEnvironment)
+        {
+            if (errorCode != 0 || createdEnvironment == null)
+            {
+                _parent._initializationTcs?.TrySetException(
+                    new InvalidOperationException($"WebView2 environment creation failed with error code: {errorCode}"));
+                return;
+            }
+
+            try
+            {
+                var controllerHandler = new CreateControllerHandler(_parent);
+                createdEnvironment.CreateCoreWebView2Controller(_parent._childWindow, controllerHandler);
+            }
+            catch (Exception ex)
+            {
+                _parent._initializationTcs?.TrySetException(ex);
+            }
+        }
     }
 
-    private void CoreWebView2_NavigationCompleted(object? sender, Microsoft.Web.WebView2.Core.CoreWebView2NavigationCompletedEventArgs e)
+    [ComVisible(true)]
+    private class CreateControllerHandler : WebView2Native.ICreateCoreWebView2ControllerCompletedHandler
     {
-        if (e.IsSuccess)
+        private readonly WindowsWebView _parent;
+
+        public CreateControllerHandler(WindowsWebView parent)
         {
-            NavigationCompleted?.Invoke(this, new WebViewNavigationEventArgs(_webView2?.Source?.ToString(), true));
+            _parent = parent;
         }
-        else
+
+        public void Invoke(int errorCode, WebView2Native.ICoreWebView2Controller? createdController)
         {
-            var errorMessage = $"Navigation failed with status: {e.WebErrorStatus}";
-            NavigationFailed?.Invoke(this, new WebViewNavigationEventArgs(_webView2?.Source?.ToString(), false, errorMessage));
+            if (errorCode != 0 || createdController == null)
+            {
+                _parent._initializationTcs?.TrySetException(
+                    new InvalidOperationException($"WebView2 controller creation failed with error code: {errorCode}"));
+                return;
+            }
+
+            try
+            {
+                _parent._controller = createdController;
+                _parent._coreWebView = createdController.CoreWebView2;
+
+                // Set up event handlers
+                var navStartingHandler = new NavigationStartingHandler(_parent);
+                _parent._coreWebView.add_NavigationStarting(navStartingHandler, out _parent._navigationStartingToken);
+
+                var navCompletedHandler = new NavigationCompletedHandler(_parent);
+                _parent._coreWebView.add_NavigationCompleted(navCompletedHandler, out _parent._navigationCompletedToken);
+
+                _parent._initializationTcs?.TrySetResult(true);
+            }
+            catch (Exception ex)
+            {
+                _parent._initializationTcs?.TrySetException(ex);
+            }
         }
     }
 
-    [DllImport("user32.dll")]
-    private static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+    [ComVisible(true)]
+    private class NavigationStartingHandler : WebView2Native.INavigationStartingEventHandler
+    {
+        private readonly WindowsWebView _parent;
 
-    [DllImport("user32.dll")]
-    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+        public NavigationStartingHandler(WindowsWebView parent)
+        {
+            _parent = parent;
+        }
 
-    [DllImport("user32.dll")]
-    private static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+        public void Invoke(WebView2Native.ICoreWebView2 sender, WebView2Native.ICoreWebView2NavigationStartingEventArgs args)
+        {
+            try
+            {
+                var uri = args.Uri;
+                _parent.NavigationStarting?.Invoke(_parent, new WebViewNavigationEventArgs(uri, true));
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"NavigationStarting event handler failed: {ex.Message}");
+            }
+        }
+    }
+
+    [ComVisible(true)]
+    private class NavigationCompletedHandler : WebView2Native.INavigationCompletedEventHandler
+    {
+        private readonly WindowsWebView _parent;
+
+        public NavigationCompletedHandler(WindowsWebView parent)
+        {
+            _parent = parent;
+        }
+
+        public void Invoke(WebView2Native.ICoreWebView2 sender, WebView2Native.ICoreWebView2NavigationCompletedEventArgs args)
+        {
+            try
+            {
+                var uri = sender.Source;
+                if (args.IsSuccess == 1)
+                {
+                    _parent.NavigationCompleted?.Invoke(_parent, new WebViewNavigationEventArgs(uri, true));
+                }
+                else
+                {
+                    var errorMessage = $"Navigation failed with status: {args.WebErrorStatus}";
+                    _parent.NavigationFailed?.Invoke(_parent, new WebViewNavigationEventArgs(uri, false, errorMessage));
+                }
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"NavigationCompleted event handler failed: {ex.Message}");
+            }
+        }
+    }
+
+    [ComVisible(true)]
+    private class ExecuteScriptHandler : WebView2Native.IExecuteScriptCompletedHandler
+    {
+        private readonly TaskCompletionSource<string> _tcs;
+
+        public ExecuteScriptHandler(TaskCompletionSource<string> tcs)
+        {
+            _tcs = tcs;
+        }
+
+        public void Invoke(int errorCode, string resultObjectAsJson)
+        {
+            if (errorCode != 0)
+            {
+                _tcs.TrySetException(new InvalidOperationException($"Script execution failed with error code: {errorCode}"));
+            }
+            else
+            {
+                _tcs.TrySetResult(resultObjectAsJson ?? string.Empty);
+            }
+        }
+    }
 #endif
 
     /// <inheritdoc/>
     public void Dispose()
     {
 #if WINDOWS
-        if (_webView2 != null)
+        try
         {
-            if (_webView2.CoreWebView2 != null)
+            if (_coreWebView != null)
             {
-                _webView2.CoreWebView2.NavigationStarting -= CoreWebView2_NavigationStarting;
-                _webView2.CoreWebView2.NavigationCompleted -= CoreWebView2_NavigationCompleted;
+                // Remove event handlers
+                if (_navigationStartingToken != 0)
+                {
+                    _coreWebView.remove_NavigationStarting(_navigationStartingToken);
+                }
+                if (_navigationCompletedToken != 0)
+                {
+                    _coreWebView.remove_NavigationCompleted(_navigationCompletedToken);
+                }
+
+                // Release COM object
+                Marshal.ReleaseComObject(_coreWebView);
+                _coreWebView = null;
             }
 
-            _webView2.Dispose();
-            _webView2 = null;
-        }
+            if (_controller != null)
+            {
+                _controller.Close();
+                Marshal.ReleaseComObject(_controller);
+                _controller = null;
+            }
 
-        _isInitialized = false;
+            if (_childWindow != IntPtr.Zero)
+            {
+                WebView2Native.DestroyWindow(_childWindow);
+                _childWindow = IntPtr.Zero;
+            }
+
+            _isInitialized = false;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"Dispose failed: {ex.Message}");
+        }
 #endif
     }
 }
