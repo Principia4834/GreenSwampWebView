@@ -1,0 +1,39 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:gsw="using:GreenSwampWebView"
+        mc:Ignorable="d" d:DesignWidth="1024" d:DesignHeight="768"
+        x:Class="WebViewDemo.MainWindow"
+        Title="GreenSwamp WebView Demo"
+        Width="1024" Height="768">
+    
+    <DockPanel>
+        <!-- Navigation Bar -->
+        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="5">
+            <Button Name="BackButton" Content="← Back" Click="BackButton_Click" Margin="5" Width="80" />
+            <Button Name="ForwardButton" Content="Forward →" Click="ForwardButton_Click" Margin="5" Width="80" />
+            <Button Name="ReloadButton" Content="⟳ Reload" Click="ReloadButton_Click" Margin="5" Width="80" />
+            <Button Name="StopButton" Content="✕ Stop" Click="StopButton_Click" Margin="5" Width="80" />
+            <TextBox Name="UrlTextBox" 
+                     Text="https://www.google.com"
+                     Width="400" 
+                     Margin="5"
+                     KeyDown="UrlTextBox_KeyDown" />
+            <Button Name="NavigateButton" Content="Go" Click="NavigateButton_Click" Margin="5" Width="60" />
+            <Button Name="LoadHtmlButton" Content="Load HTML" Click="LoadHtmlButton_Click" Margin="5" Width="100" />
+        </StackPanel>
+        
+        <!-- Status Bar -->
+        <Border DockPanel.Dock="Bottom" Background="#F0F0F0" BorderBrush="#CCCCCC" BorderThickness="0,1,0,0">
+            <TextBlock Name="StatusTextBlock" Text="Ready" Margin="5" />
+        </Border>
+        
+        <!-- WebView -->
+        <gsw:WebView Name="WebViewControl" 
+                     Url="https://www.google.com"
+                     NavigationStarting="WebView_NavigationStarting"
+                     NavigationCompleted="WebView_NavigationCompleted"
+                     NavigationFailed="WebView_NavigationFailed" />
+    </DockPanel>
+</Window>
