@@ -293,8 +293,15 @@ public class WebView : Control
             return;
         }
 
-        var bounds = Bounds;
-        _platformWebView.UpdateBounds(0, 0, (int)bounds.Width, (int)bounds.Height);
+        // Get position of this control relative to the window
+        var window = VisualRoot as Window;
+        var point = this.TranslatePoint(new Point(0, 0), window);
+        int x = (int)(point?.X ?? 0);
+        int y = (int)(point?.Y ?? 0);
+        int width = (int)Bounds.Width;
+        int height = (int)Bounds.Height;
+
+        _platformWebView.UpdateBounds(x, y, width, height);
         _platformWebView.SetVisible(IsVisible);
     }
 
