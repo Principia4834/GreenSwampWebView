@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SampleRotator 3D Viewer</title>
+    <style>
+        body, html {
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #2a2a2a;
+        }
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            touch-action: none;
+        }
+        #loadingMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            font-size: 18px;
+            text-align: center;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        #loadingMessage.hidden {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingMessage">
+        <p>?? SampleRotator 3D Viewer</p>
+        <p style="font-size: 14px; color: #888;">Initializing Babylon.js...</p>
+    </div>
+    <canvas id="renderCanvas"></canvas>
+    
+    <!-- Babylon.js Core Library -->
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    
+    <!-- Babylon.js Loaders (OBJ, MTL support) -->
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    
+    <!-- SampleRotator Viewer Script -->
+    <script src="viewer.js"></script>
+</body>
+</html>
