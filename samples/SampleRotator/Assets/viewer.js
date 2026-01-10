@@ -436,9 +436,9 @@ class BabylonViewer {
         // - X rotation = theta (tilt from Y-axis)
         // - Z rotation = 0 (no roll)
         
-        const xRotation = thetaRad;      // Angle from Y-axis (elevation)
-        const yRotation = phiRad;        // Rotation in XZ plane (azimuth)
-        const zRotation = 0;             // No roll
+        const xRotation = 0;             // No roll (tube doesn't spin around itself)
+        const yRotation = phiRad;        // Horizontal rotation (azimuth in XZ)
+        const zRotation = thetaRad;      // Tilt up/down (lifts tube from XY plane)
         
         this.transformNode.rotation = new BABYLON.Vector3(xRotation, yRotation, zRotation);
         
@@ -466,13 +466,13 @@ class BabylonViewer {
         // theta: angle from Y-axis
         // phi: rotation in XZ plane
         
-        const xRotation = thetaRad;      // Angle from Y-axis
-        const yRotation = phiRad;        // Rotation in XZ plane
-        const zRotation = 0;             // No roll
+        const xRotation = 0;             // No roll (tube doesn't spin around itself)
+        const yRotation = phiRad;        // Horizontal rotation (azimuth in XZ)
+        const zRotation = thetaRad;      // Tilt up/down (lifts tube from XY plane)
         
         this.currentMesh.rotation = new BABYLON.Vector3(xRotation, yRotation, zRotation);
         
-        console.log(`Rotation set to: theta=${thetaDegrees}° (from Y-axis), phi=${phiDegrees}° (in XZ plane)`);
+        console.log(`Rotation set to: theta=${thetaDegrees}° (tilt up/down), phi=${phiDegrees}° (horizontal rotation)`);
     }
 
     /**
