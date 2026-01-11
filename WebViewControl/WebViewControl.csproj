@@ -18,9 +18,9 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.1.3" />
+    <PackageReference Include="Avalonia" Version="11.3.10" />
     <!-- Pin a concrete stable version of WebView2 to avoid drifting -->
-    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3595.46" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
+    <PackageReference Include="Microsoft.Web.WebView2" Version="1.0.3650.58" Condition="$([MSBuild]::IsOSPlatform('Windows'))" />
   </ItemGroup>
 
 </Project>

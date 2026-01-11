@@ -1,36 +1,52 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0</TargetFramework>
-    <Nullable>enable</Nullable>
-    <BuiltInComInteropSupport>true</BuiltInComInteropSupport>
-    <ApplicationManifest>app.manifest</ApplicationManifest>
-    <AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
-  </PropertyGroup>
+	<!-- Default to cross-platform for Release, override for Debug -->
+	<PropertyGroup>
+		<OutputType>WinExe</OutputType>
+		<TargetFramework>net8.0</TargetFramework>
+		<Nullable>enable</Nullable>
+		<BuiltInComInteropSupport>true</BuiltInComInteropSupport>
+		<ApplicationManifest>app.manifest</ApplicationManifest>
+		<AvaloniaUseCompiledBindingsByDefault>true</AvaloniaUseCompiledBindingsByDefault>
+		<UseWPF>false</UseWPF>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <AvaloniaResource Include="Assets\**" />
-  </ItemGroup>
+	<!-- Debug configuration: Windows-only, WPF enabled for designer -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+		<TargetFramework>net8.0-windows</TargetFramework>
+		<UseWPF>true</UseWPF>
+		<NoWarn>;MSB3277</NoWarn>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <PackageReference Include="Avalonia" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Desktop" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Themes.Fluent" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Fonts.Inter" Version="11.1.3" />
-    <PackageReference Include="Avalonia.Diagnostics" Version="11.1.3" />
-    <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-  </ItemGroup>
+	<!-- Release configuration: Cross-platform, WPF disabled -->
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<TargetFramework>net8.0</TargetFramework>
+		<UseWPF>false</UseWPF>
+		<NoWarn>;MSB3277</NoWarn>
+	</PropertyGroup>
 
-  <ItemGroup>
-    <ProjectReference Include="..\..\WebViewControl\WebViewControl.csproj" />
-  </ItemGroup>
+	<ItemGroup>
+		<AvaloniaResource Include="Assets\**" />
+	</ItemGroup>
 
-  <ItemGroup>
-    <None Update="Assets\viewer.html">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Update="Assets\viewer.js">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+	<ItemGroup>
+		<PackageReference Include="Avalonia" Version="11.3.10" />
+		<PackageReference Include="Avalonia.Desktop" Version="11.3.10" />
+		<PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.10" />
+		<PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.10" />
+		<PackageReference Include="Avalonia.Diagnostics" Version="11.3.10" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\..\WebViewControl\WebViewControl.csproj" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<None Update="Assets\viewer.html">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+		<None Update="Assets\viewer.js">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+		</None>
+	</ItemGroup>
 </Project>
